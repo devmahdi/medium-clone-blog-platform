@@ -2,6 +2,7 @@
 
 A modern, minimal blog platform inspired by Medium. Built with Next.js 16+ frontend, NestJS backend, and admin dashboard.
 
+[![Vercel Deployment](https://github.com/devmahdi/medium-clone-blog-platform/actions/workflows/vercel-deploy.yml/badge.svg)](https://github.com/devmahdi/medium-clone-blog-platform/actions/workflows/vercel-deploy.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 ## ⚡ Quick Links
