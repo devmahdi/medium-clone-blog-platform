@@ -486,6 +486,76 @@ export const adminApi = {
       await fetchWithAuth(`/admin/comments/${commentId}`, { method: 'DELETE' }),
     );
   },
+
+  // Tags
+  async getTags(params?: { page?: number; limit?: number; search?: string }) {
+    const qs = new URLSearchParams();
+    if (params?.page) qs.set('page', String(params.page));
+    if (params?.limit) qs.set('limit', String(params.limit));
+    if (params?.search) qs.set('search', params.search);
+    return handleResponse<{ data: any[]; meta: any }>(
+      await fetchWithAuth(`/admin/tags?${qs.toString()}`),
+    );
+  },
+  async createTag(name: string, description?: string) {
+    return handleResponse(
+      await fetchWithAuth('/admin/tags', {
+        method: 'POST',
+        body: JSON.stringify({ name, description }),
+      }),
+    );
+  },
+  async updateTag(tagId: string, data: { name?: string; description?: string }) {
+    return handleResponse(
+      await fetchWithAuth(`/admin/tags/${tagId}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      }),
+    );
+  },
+  async deleteTag(tagId: string) {
+    return handleResponse(
+      await fetchWithAuth(`/admin/tags/${tagId}`, { method: 'DELETE' }),
+    );
+  },
+  async mergeTags(sourceTagId: string, targetTagId: string) {
+    return handleResponse(
+      await fetchWithAuth(`/admin/tags/${sourceTagId}/merge`, {
+        method: 'POST',
+        body: JSON.stringify({ targetTagId }),
+      }),
+    );
+  },
+
+  // Settings
+  async getSettings() {
+    return handleResponse<any>(await fetchWithAuth('/admin/settings'));
+  },
+  async updateSettings(data: any) {
+    return handleResponse(
+      await fetchWithAuth('/admin/settings', {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      }),
+    );
+  },
+
+  // Media
+  async getMediaFiles(params?: { page?: number; limit?: number }) {
+    const qs = new URLSearchParams();
+    if (params?.page) qs.set('page', String(params.page));
+    if (params?.limit) qs.set('limit', String(params.limit));
+    return handleResponse<{ data: any[]; meta: any }>(
+      await fetchWithAuth(`/admin/media?${qs.toString()}`),
+    );
+  },
+  async deleteMediaFile(fileKey: string) {
+    return handleResponse(
+      await fetchWithAuth(`/media/${encodeURIComponent(fileKey)}`, {
+        method: 'DELETE',
+      }),
+    );
+  },
 };
 
 // ─── Helpers ───
