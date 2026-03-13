@@ -1,0 +1,906 @@
+openapi: 3.0.3
+info:
+  title: Blog Platform API
+  description: |
+    A modern blog platform API inspired by Medium.
+    
+    ## Features
+    - User authentication (JWT)
+    - Post management (CRUD, drafts, publishing)
+    - Social features (likes, follows, comments)
+    - Rich text content support
+    - Tag-based discovery
+    
+    ## Authentication
+    Most endpoints require authentication via JWT Bearer token.
+    Include the token in the `Authorization` header:
+    ```
+    Authorization: Bearer {accessToken}
+    ```
+  version: 1.0.0
+  contact:
+    name: Blog Platform API Support
+    url: https://github.com/devmahdi/medium-clone-blog-platform
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:3001/api/v1
+    description: Development server
+  - url: https://api.blog-platform.com/api/v1
+    description: Production server
+
+tags:
+  - name: Authentication
+    description: User registration and login
+  - name: Users
+    description: User profile and management
+  - name: Posts
+    description: Blog post operations
+  - name: Comments
+    description: Comment management
+  - name: Likes
+    description: Like operations
+  - name: Follows
+    description: Social following
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        username:
+          type: string
+          minLength: 3
+          maxLength: 50
+        fullName:
+          type: string
+          nullable: true
+        bio:
+          type: string
+          nullable: true
+        avatarUrl:
+          type: string
+          format: uri
+          nullable: true
+        isEmailVerified:
+          type: boolean
+        role:
+          type: string
+          enum: [user, admin]
+        followersCount:
+          type: integer
+        followingCount:
+          type: integer
+        postsCount:
+          type: integer
+        isFollowing:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    Post:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        subtitle:
+          type: string
+          nullable: true
+        content:
+          type: string
+        excerpt:
+          type: string
+          nullable: true
+        coverImageUrl:
+          type: string
+          format: uri
+          nullable: true
+        slug:
+          type: string
+        status:
+          type: string
+          enum: [draft, published, archived]
+        publishedAt:
+          type: string
+          format: date-time
+          nullable: true
+        viewCount:
+          type: integer
+        likeCount:
+          type: integer
+        commentCount:
+          type: integer
+        readingTimeMinutes:
+          type: integer
+        tags:
+          type: array
+          items:
+            type: string
+        allowComments:
+          type: boolean
+        author:
+          $ref: '#/components/schemas/UserSummary'
+        isLiked:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    UserSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        username:
+          type: string
+        fullName:
+          type: string
+        avatarUrl:
+          type: string
+          format: uri
+
+    Comment:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        content:
+          type: string
+        postId:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        parentId:
+          type: string
+          format: uuid
+          nullable: true
+        likeCount:
+          type: integer
+        isEdited:
+          type: boolean
+        user:
+          $ref: '#/components/schemas/UserSummary'
+        replies:
+          type: array
+          items:
+            $ref: '#/components/schemas/Comment'
+        repliesCount:
+          type: integer
+        canEdit:
+          type: boolean
+        canDelete:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    AuthTokens:
+      type: object
+      properties:
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+        expiresIn:
+          type: integer
+          description: Token expiration time in seconds
+
+    PaginationMeta:
+      type: object
+      properties:
+        page:
+          type: integer
+        limit:
+          type: integer
+        total:
+          type: integer
+        totalPages:
+          type: integer
+        hasNextPage:
+          type: boolean
+        hasPreviousPage:
+          type: boolean
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            details:
+              type: array
+              items:
+                type: object
+                properties:
+                  field:
+                    type: string
+                  message:
+                    type: string
+        meta:
+          type: object
+          properties:
+            timestamp:
+              type: string
+              format: date-time
+            path:
+              type: string
+
+paths:
+  /auth/register:
+    post:
+      tags:
+        - Authentication
+      summary: Register new user
+      operationId: register
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - username
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                username:
+                  type: string
+                  minLength: 3
+                  maxLength: 50
+                password:
+                  type: string
+                  minLength: 8
+                  pattern: ^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]
+                fullName:
+                  type: string
+      responses:
+        '201':
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      user:
+                        $ref: '#/components/schemas/User'
+                      tokens:
+                        $ref: '#/components/schemas/AuthTokens'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: User login
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - identifier
+                - password
+              properties:
+                identifier:
+                  type: string
+                  description: Email or username
+                password:
+                  type: string
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      user:
+                        $ref: '#/components/schemas/User'
+                      tokens:
+                        $ref: '#/components/schemas/AuthTokens'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/profile:
+    get:
+      tags:
+        - Authentication
+      summary: Get current user profile
+      operationId: getProfile
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: User profile
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/User'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /users/{identifier}:
+    get:
+      tags:
+        - Users
+      summary: Get user by ID or username
+      operationId: getUserByIdentifier
+      parameters:
+        - name: identifier
+          in: path
+          required: true
+          schema:
+            type: string
+          description: User ID (UUID) or username
+      responses:
+        '200':
+          description: User found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/User'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /users/me:
+    patch:
+      tags:
+        - Users
+      summary: Update current user profile
+      operationId: updateProfile
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                fullName:
+                  type: string
+                bio:
+                  type: string
+                avatarUrl:
+                  type: string
+                  format: uri
+      responses:
+        '200':
+          description: Profile updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/User'
+
+  /users/{identifier}/posts:
+    get:
+      tags:
+        - Users
+      summary: Get user's posts
+      operationId: getUserPosts
+      parameters:
+        - name: identifier
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+            maximum: 50
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [draft, published, archived]
+      responses:
+        '200':
+          description: User's posts
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Post'
+                  meta:
+                    $ref: '#/components/schemas/PaginationMeta'
+
+  /users/{identifier}/follow:
+    post:
+      tags:
+        - Follows
+      summary: Follow a user
+      operationId: followUser
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: identifier
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: User followed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      userId:
+                        type: string
+                        format: uuid
+                      username:
+                        type: string
+                      isFollowing:
+                        type: boolean
+                      followersCount:
+                        type: integer
+        '400':
+          description: Cannot follow yourself
+        '409':
+          description: Already following this user
+
+    delete:
+      tags:
+        - Follows
+      summary: Unfollow a user
+      operationId: unfollowUser
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: identifier
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: User unfollowed successfully
+
+  /posts:
+    get:
+      tags:
+        - Posts
+      summary: Get all published posts (feed)
+      operationId: getPosts
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+            maximum: 50
+        - name: sortBy
+          in: query
+          schema:
+            type: string
+            enum: [publishedAt, viewCount, likeCount, createdAt]
+            default: publishedAt
+        - name: order
+          in: query
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
+        - name: tags
+          in: query
+          schema:
+            type: string
+          description: Comma-separated tags
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Search in title/content
+      responses:
+        '200':
+          description: Posts feed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Post'
+                  meta:
+                    $ref: '#/components/schemas/PaginationMeta'
+
+    post:
+      tags:
+        - Posts
+      summary: Create a new post
+      operationId: createPost
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - title
+                - content
+              properties:
+                title:
+                  type: string
+                  minLength: 3
+                  maxLength: 255
+                subtitle:
+                  type: string
+                content:
+                  type: string
+                excerpt:
+                  type: string
+                coverImageUrl:
+                  type: string
+                  format: uri
+                status:
+                  type: string
+                  enum: [draft, published]
+                  default: draft
+                tags:
+                  type: array
+                  items:
+                    type: string
+                allowComments:
+                  type: boolean
+                  default: true
+      responses:
+        '201':
+          description: Post created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Post'
+
+  /posts/{identifier}:
+    get:
+      tags:
+        - Posts
+      summary: Get post by ID or slug
+      operationId: getPost
+      parameters:
+        - name: identifier
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Post ID (UUID) or slug
+      responses:
+        '200':
+          description: Post found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Post'
+        '404':
+          description: Post not found
+
+    patch:
+      tags:
+        - Posts
+      summary: Update post
+      operationId: updatePost
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: identifier
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                content:
+                  type: string
+                status:
+                  type: string
+                  enum: [draft, published, archived]
+      responses:
+        '200':
+          description: Post updated
+        '403':
+          description: Not authorized
+
+    delete:
+      tags:
+        - Posts
+      summary: Delete post
+      operationId: deletePost
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: identifier
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Post deleted
+        '403':
+          description: Not authorized
+
+  /posts/{id}/like:
+    post:
+      tags:
+        - Likes
+      summary: Like a post
+      operationId: likePost
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Post liked
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      postId:
+                        type: string
+                        format: uuid
+                      isLiked:
+                        type: boolean
+                      likeCount:
+                        type: integer
+
+    delete:
+      tags:
+        - Likes
+      summary: Unlike a post
+      operationId: unlikePost
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Post unliked
+
+  /posts/{id}/comments:
+    get:
+      tags:
+        - Comments
+      summary: Get post comments
+      operationId: getPostComments
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Comments list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Comment'
+                  meta:
+                    $ref: '#/components/schemas/PaginationMeta'
+
+    post:
+      tags:
+        - Comments
+      summary: Create comment
+      operationId: createComment
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - content
+              properties:
+                content:
+                  type: string
+                  minLength: 1
+                  maxLength: 5000
+                parentId:
+                  type: string
+                  format: uuid
+                  nullable: true
+      responses:
+        '201':
+          description: Comment created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Comment'
+
+  /comments/{id}:
+    patch:
+      tags:
+        - Comments
+      summary: Update comment
+      operationId: updateComment
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                content:
+                  type: string
+      responses:
+        '200':
+          description: Comment updated
+
+    delete:
+      tags:
+        - Comments
+      summary: Delete comment
+      operationId: deleteComment
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Comment deleted
