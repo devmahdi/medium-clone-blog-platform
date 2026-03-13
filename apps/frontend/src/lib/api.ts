@@ -289,6 +289,61 @@ export const bookmarksApi = {
   },
 };
 
+// ─── Claps ───
+export const clapsApi = {
+  async clap(articleId: string, count = 1) {
+    return handleResponse<{ totalClaps: number }>(
+      await fetchWithAuth(`/articles/${articleId}/clap`, {
+        method: 'POST',
+        body: JSON.stringify({ count }),
+      }),
+    );
+  },
+};
+
+// ─── Comments ───
+export interface Comment {
+  id: string;
+  content: string;
+  author: { id: string; username: string; fullName?: string; avatarUrl?: string };
+  articleId: string;
+  parentId?: string;
+  createdAt: string;
+  updatedAt: string;
+  replies?: Comment[];
+}
+
+export const commentsApi = {
+  async getByArticle(articleId: string, page = 1, limit = 50) {
+    return handleResponse<{ data: Comment[]; meta: any }>(
+      await fetchWithAuth(
+        `/articles/${articleId}/comments?page=${page}&limit=${limit}`,
+      ),
+    );
+  },
+  async create(articleId: string, content: string, parentId?: string) {
+    return handleResponse<Comment>(
+      await fetchWithAuth(`/articles/${articleId}/comments`, {
+        method: 'POST',
+        body: JSON.stringify({ content, parentId }),
+      }),
+    );
+  },
+  async update(commentId: string, content: string) {
+    return handleResponse<Comment>(
+      await fetchWithAuth(`/comments/${commentId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ content }),
+      }),
+    );
+  },
+  async delete(commentId: string) {
+    return handleResponse(
+      await fetchWithAuth(`/comments/${commentId}`, { method: 'DELETE' }),
+    );
+  },
+};
+
 // ─── Media ───
 export const mediaApi = {
   async uploadCover(file: File) {
