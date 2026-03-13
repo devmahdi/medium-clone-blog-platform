@@ -368,6 +368,126 @@ export const mediaApi = {
   },
 };
 
+// ─── Admin ───
+export const adminApi = {
+  // Users
+  async getUsers(params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    role?: string;
+    sortBy?: string;
+    sortOrder?: 'asc' | 'desc';
+  }) {
+    const qs = new URLSearchParams();
+    if (params?.page) qs.set('page', String(params.page));
+    if (params?.limit) qs.set('limit', String(params.limit));
+    if (params?.search) qs.set('search', params.search);
+    if (params?.role) qs.set('role', params.role);
+    if (params?.sortBy) qs.set('sortBy', params.sortBy);
+    if (params?.sortOrder) qs.set('sortOrder', params.sortOrder);
+    return handleResponse<{ data: any[]; meta: any }>(
+      await fetchWithAuth(`/admin/users?${qs.toString()}`),
+    );
+  },
+  async banUser(userId: string) {
+    return handleResponse(
+      await fetchWithAuth(`/admin/users/${userId}/ban`, { method: 'POST' }),
+    );
+  },
+  async unbanUser(userId: string) {
+    return handleResponse(
+      await fetchWithAuth(`/admin/users/${userId}/unban`, { method: 'POST' }),
+    );
+  },
+  async promoteToAdmin(userId: string) {
+    return handleResponse(
+      await fetchWithAuth(`/admin/users/${userId}/promote`, { method: 'POST' }),
+    );
+  },
+
+  // Articles
+  async getArticles(params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    status?: string;
+    sortBy?: string;
+    sortOrder?: 'asc' | 'desc';
+  }) {
+    const qs = new URLSearchParams();
+    if (params?.page) qs.set('page', String(params.page));
+    if (params?.limit) qs.set('limit', String(params.limit));
+    if (params?.search) qs.set('search', params.search);
+    if (params?.status) qs.set('status', params.status);
+    if (params?.sortBy) qs.set('sortBy', params.sortBy);
+    if (params?.sortOrder) qs.set('sortOrder', params.sortOrder);
+    return handleResponse<{ data: Article[]; meta: any }>(
+      await fetchWithAuth(`/admin/articles?${qs.toString()}`),
+    );
+  },
+  async featureArticle(articleId: string) {
+    return handleResponse(
+      await fetchWithAuth(`/admin/articles/${articleId}/feature`, {
+        method: 'POST',
+      }),
+    );
+  },
+  async unfeatureArticle(articleId: string) {
+    return handleResponse(
+      await fetchWithAuth(`/admin/articles/${articleId}/unfeature`, {
+        method: 'POST',
+      }),
+    );
+  },
+  async archiveArticle(articleId: string) {
+    return handleResponse(
+      await fetchWithAuth(`/admin/articles/${articleId}/archive`, {
+        method: 'POST',
+      }),
+    );
+  },
+  async deleteArticle(articleId: string) {
+    return handleResponse(
+      await fetchWithAuth(`/admin/articles/${articleId}`, { method: 'DELETE' }),
+    );
+  },
+
+  // Comments
+  async getComments(params?: {
+    page?: number;
+    limit?: number;
+    status?: string;
+  }) {
+    const qs = new URLSearchParams();
+    if (params?.page) qs.set('page', String(params.page));
+    if (params?.limit) qs.set('limit', String(params.limit));
+    if (params?.status) qs.set('status', params.status);
+    return handleResponse<{ data: Comment[]; meta: any }>(
+      await fetchWithAuth(`/admin/comments?${qs.toString()}`),
+    );
+  },
+  async approveComment(commentId: string) {
+    return handleResponse(
+      await fetchWithAuth(`/admin/comments/${commentId}/approve`, {
+        method: 'POST',
+      }),
+    );
+  },
+  async hideComment(commentId: string) {
+    return handleResponse(
+      await fetchWithAuth(`/admin/comments/${commentId}/hide`, {
+        method: 'POST',
+      }),
+    );
+  },
+  async deleteComment(commentId: string) {
+    return handleResponse(
+      await fetchWithAuth(`/admin/comments/${commentId}`, { method: 'DELETE' }),
+    );
+  },
+};
+
 // ─── Helpers ───
 export function isAuthenticated(): boolean {
   if (typeof window === 'undefined') return false;
@@ -383,4 +503,9 @@ export function getCurrentUser(): any | null {
   } catch {
     return null;
   }
+}
+
+export function isAdmin(): boolean {
+  const user = getCurrentUser();
+  return user?.role === 'ADMIN';
 }
