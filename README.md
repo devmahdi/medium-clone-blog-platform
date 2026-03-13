@@ -201,6 +201,139 @@ pnpm test
 | `pnpm test` | Run tests across all apps |
 | `pnpm clean` | Clean all node_modules and build artifacts |
 
+## 🚀 Deployment
+
+This project is configured for seamless deployment to production platforms:
+
+### Frontend → Vercel
+
+**Quick Start (5 minutes):**
+1. Go to [vercel.com/new](https://vercel.com/new)
+2. Import this repository
+3. Configure as monorepo:
+   - Build Command: `cd apps/frontend && pnpm build`
+   - Output Directory: `apps/frontend/.next`
+   - Install Command: `pnpm install`
+4. Add environment variable:
+   - `NEXT_PUBLIC_API_URL` = your Railway backend URL
+5. Deploy!
+
+**📖 Documentation:**
+- **Quick Start:** [VERCEL_QUICK_START.md](./VERCEL_QUICK_START.md) - 5-minute setup
+- **Full Guide:** [VERCEL_DEPLOYMENT.md](./VERCEL_DEPLOYMENT.md) - Complete deployment guide
+- **Troubleshooting:** [VERCEL_TROUBLESHOOTING.md](./VERCEL_TROUBLESHOOTING.md) - Common issues
+
+**Features:**
+- ✅ Auto-deploy on push to main
+- ✅ Preview deployments for PRs
+- ✅ Vercel Analytics & Speed Insights
+- ✅ Global CDN (40+ regions)
+- ✅ Automatic SSL/HTTPS
+- ✅ Edge Functions support
+- ✅ ISR & caching
+
+### Backend → Railway
+
+**Quick Start (10 minutes):**
+```bash
+npm install -g @railway/cli
+cd apps/backend
+# Follow setup in backend DEPLOYMENT.md
+```
+
+**📖 Documentation:**
+- See `apps/backend/DEPLOYMENT.md` for complete guide
+- Railway provides PostgreSQL, Redis, auto-SSL
+
+**What Gets Deployed:**
+- ✅ NestJS API with PostgreSQL
+- ✅ Database migrations
+- ✅ Health monitoring
+- ✅ Auto-scaling
+
+### CI/CD Pipeline
+
+Both frontend and backend have GitHub Actions workflows:
+
+**Frontend:**
+- `.github/workflows/vercel-deploy.yml`
+- Linting, type-checking, building
+- Automatic preview & production deployments
+- Health checks & Slack notifications
+
+**Backend:**
+- `apps/backend/.github/workflows/railway-deploy.yml`
+- Testing, linting, building
+- Database migrations
+- Deployment verification
+
+### Architecture After Deployment
+
+```
+┌─────────────────────────────────────────┐
+│          Vercel (Global CDN)            │
+│   https://yourdomain.com                │
+│   ┌─────────────────────────────────┐   │
+│   │     Next.js Frontend            │   │
+│   │   - App Router                  │   │
+│   │   - Server Components           │   │
+│   │   - Edge Functions              │   │
+│   └──────────────┬──────────────────┘   │
+└────────────────────│─────────────────────┘
+                    │
+                    │ HTTPS/REST API
+                    ▼
+┌─────────────────────────────────────────┐
+│         Railway (Cloud Platform)        │
+│   https://your-app.up.railway.app       │
+│   ┌─────────────────────────────────┐   │
+│   │      NestJS Backend             │   │
+│   │   - REST API                    │   │
+│   │   - JWT Auth                    │   │
+│   └──────────────┬──────────────────┘   │
+│                  │                       │
+│   ┌──────────────┴──────────────┐       │
+│   │                             │       │
+│   ▼                             ▼       │
+│ ┌──────────┐             ┌──────────┐  │
+│ │PostgreSQL│             │  Redis   │  │
+│ └──────────┘             └──────────┘  │
+└─────────────────────────────────────────┘
+```
+
+### Deployment URLs
+
+After deployment, your app will be live at:
+
+- **Frontend:** `https://yourdomain.com` (or `https://your-app.vercel.app`)
+- **Backend API:** `https://your-railway-app.up.railway.app/api/v1`
+- **API Docs:** `https://your-railway-app.up.railway.app/api/docs`
+- **Health Checks:**
+  - Frontend: `https://yourdomain.com/api/health`
+  - Backend: `https://your-railway-app.up.railway.app/api/v1/health`
+
+### Cost Estimate
+
+| Service | Free Tier | Recommended Plan | Cost |
+|---------|-----------|------------------|------|
+| Vercel | 100GB bandwidth | Hobby (Free) | $0 |
+| Railway | $5 credit/month | Hobby | $5/month |
+| **Total** | - | - | **$5/month** |
+
+### Deployment Checklist
+
+- [ ] Backend deployed to Railway
+- [ ] Frontend deployed to Vercel
+- [ ] Environment variables configured
+- [ ] Custom domains set up (optional)
+- [ ] SSL certificates active
+- [ ] CORS configured between frontend/backend
+- [ ] Health checks passing
+- [ ] CI/CD pipelines working
+- [ ] Analytics enabled
+
+---
+
 ## 🗺️ Roadmap
 
 ### Phase 1: Foundation ✅
@@ -208,6 +341,8 @@ pnpm test
 - [x] Next.js frontend initialization
 - [x] NestJS backend initialization
 - [x] TypeScript configuration
+- [x] Deployment configuration (Vercel + Railway)
+- [x] CI/CD pipelines
 - [ ] Database schema design
 
 ### Phase 2: Core Features
@@ -233,12 +368,14 @@ pnpm test
 - [ ] Performance optimization
 - [ ] Accessibility (WCAG 2.1)
 
-### Phase 5: Deployment
-- [ ] Docker containerization
-- [ ] CI/CD pipeline
-- [ ] Vercel deployment (frontend)
-- [ ] Railway deployment (backend)
-- [ ] Database migrations
+### Phase 5: Production ✅
+- [x] Docker containerization (optional)
+- [x] CI/CD pipeline
+- [x] Vercel deployment (frontend)
+- [x] Railway deployment (backend)
+- [x] Database migrations
+- [x] Health monitoring
+- [x] Analytics integration
 
 ## 🤝 Contributing
 
