@@ -1,8 +1,15 @@
 # Blog Platform - Medium Clone
 
-A modern, minimal blog platform inspired by Medium. Built with Next.js 16+ frontend and NestJS backend.
+A modern, minimal blog platform inspired by Medium. Built with Next.js 16+ frontend, NestJS backend, and admin dashboard.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
+## ⚡ Quick Links
+
+- **Frontend Deployment:** [VERCEL_QUICK_START.md](./VERCEL_QUICK_START.md) (5 min)
+- **Backend Deployment:** [apps/backend/RAILWAY_QUICK_START.md](./apps/backend/RAILWAY_QUICK_START.md) (10 min)
+- **Admin Setup:** [ADMIN_QUICK_START.md](./ADMIN_QUICK_START.md) (5 min)
+- **Full Documentation:** See deployment guides below
 
 ## 🏗️ Project Architecture
 
@@ -250,6 +257,47 @@ cd apps/backend
 - ✅ Database migrations
 - ✅ Health monitoring
 - ✅ Auto-scaling
+
+### Admin Dashboard → Vercel (Same as Frontend)
+
+**Quick Start (5 minutes):**
+1. **Create admin user in database:**
+   ```bash
+   railway run psql $DATABASE_URL
+   UPDATE users SET "isAdmin" = true WHERE email = 'admin@example.com';
+   ```
+
+2. **Access admin:**
+   ```
+   https://yourdomain.com/admin
+   ```
+
+3. **Login with admin credentials**
+
+**📖 Documentation:**
+- **Quick Start:** [ADMIN_QUICK_START.md](./ADMIN_QUICK_START.md) - 5-minute setup
+- **Full Guide:** [ADMIN_DEPLOYMENT.md](./ADMIN_DEPLOYMENT.md) - Security & deployment guide
+
+**Features:**
+- ✅ Middleware authentication (JWT)
+- ✅ Admin-only access control
+- ✅ Secure session management
+- ✅ Auto-deploy with frontend
+- ✅ User management
+- ✅ Article moderation
+- ✅ Comment moderation
+- ✅ Tag management with merge
+- ✅ Site settings
+- ✅ Media library
+
+**Admin Routes:**
+- `/admin` - Dashboard
+- `/admin/users` - User management
+- `/admin/articles` - Article moderation
+- `/admin/comments` - Comment moderation
+- `/admin/tags` - Tag management
+- `/admin/settings` - Site configuration
+- `/admin/media` - Media library
 
 ### CI/CD Pipeline
 
