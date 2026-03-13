@@ -1,10 +1,11 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
 
 export class ApiError extends Error {
   constructor(
     public status: number,
     public message: string,
-    public errors?: any
+    public errors?: any,
   ) {
     super(message);
     this.name = 'ApiError';
@@ -13,14 +14,21 @@ export class ApiError extends Error {
 
 async function fetchWithAuth(
   endpoint: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
 ): Promise<Response> {
-  const token = localStorage.getItem('accessToken');
+  const token =
+    typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
 
-  const headers: HeadersInit = {
-    'Content-Type': 'application/json',
-    ...options.headers,
-  };
+  const headers: Record<string, string> = {};
+
+  // Only set Content-Type for non-FormData requests
+  if (!(options.body instanceof FormData)) {
+    headers['Content-Type'] = 'application/json';
+  }
+
+  if (options.headers) {
+    Object.assign(headers, options.headers);
+  }
 
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
@@ -31,8 +39,7 @@ async function fetchWithAuth(
     headers,
   });
 
-  // Handle 401 - try to refresh token
-  if (response.status === 401) {
+  if (response.status === 401 && typeof window !== 'undefined') {
     const refreshToken = localStorage.getItem('refreshToken');
     if (refreshToken) {
       try {
@@ -41,22 +48,14 @@ async function fetchWithAuth(
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ refreshToken }),
         });
-
         if (refreshResponse.ok) {
-          const { accessToken, refreshToken: newRefreshToken } =
-            await refreshResponse.json();
-          localStorage.setItem('accessToken', accessToken);
-          localStorage.setItem('refreshToken', newRefreshToken);
-
-          // Retry original request
-          headers['Authorization'] = `Bearer ${accessToken}`;
-          return fetch(`${API_BASE_URL}${endpoint}`, {
-            ...options,
-            headers,
-          });
+          const data = await refreshResponse.json();
+          localStorage.setItem('accessToken', data.accessToken);
+          localStorage.setItem('refreshToken', data.refreshToken);
+          headers['Authorization'] = `Bearer ${data.accessToken}`;
+          return fetch(`${API_BASE_URL}${endpoint}`, { ...options, headers });
         }
-      } catch (error) {
-        // Refresh failed, clear tokens
+      } catch {
         localStorage.removeItem('accessToken');
         localStorage.removeItem('refreshToken');
         window.location.href = '/login';
@@ -69,20 +68,19 @@ async function fetchWithAuth(
 
 async function handleResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
-    const error = await response.json().catch(() => ({
-      message: 'An error occurred',
-    }));
+    const error = await response
+      .json()
+      .catch(() => ({ message: 'An error occurred' }));
     throw new ApiError(
       response.status,
       error.message || 'An error occurred',
-      error.errors
+      error.errors,
     );
   }
-
   return response.json();
 }
 
-// Auth API
+// ─── Auth ───
 export const authApi = {
   async register(data: {
     email: string;
@@ -90,7 +88,7 @@ export const authApi = {
     password: string;
     fullName?: string;
   }) {
-    const response = await fetch(`${API_BASE_URL}/auth/register`, {
+    const r = await fetch(`${API_BASE_URL}/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
@@ -99,11 +97,10 @@ export const authApi = {
       user: any;
       accessToken: string;
       refreshToken: string;
-    }>(response);
+    }>(r);
   },
-
   async login(data: { identifier: string; password: string }) {
-    const response = await fetch(`${API_BASE_URL}/auth/login`, {
+    const r = await fetch(`${API_BASE_URL}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
@@ -112,93 +109,222 @@ export const authApi = {
       user: any;
       accessToken: string;
       refreshToken: string;
-    }>(response);
+    }>(r);
   },
-
   async logout() {
-    const response = await fetchWithAuth('/auth/logout', { method: 'POST' });
-    return handleResponse(response);
+    return handleResponse(
+      await fetchWithAuth('/auth/logout', { method: 'POST' }),
+    );
   },
-
   async changePassword(data: {
     currentPassword: string;
     newPassword: string;
   }) {
-    const response = await fetchWithAuth('/auth/change-password', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-    return handleResponse(response);
+    return handleResponse(
+      await fetchWithAuth('/auth/change-password', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    );
   },
 };
 
-// Users API
+// ─── Users ───
 export const usersApi = {
   async getProfile(identifier: string) {
-    const response = await fetchWithAuth(`/users/profile/${identifier}`);
-    return handleResponse<any>(response);
+    return handleResponse<any>(
+      await fetchWithAuth(`/users/profile/${identifier}`),
+    );
   },
-
   async updateProfile(data: {
     fullName?: string;
     bio?: string;
     avatarUrl?: string;
-    socialLinks?: {
-      twitter?: string;
-      github?: string;
-      website?: string;
-      linkedin?: string;
-    };
+    socialLinks?: Record<string, string>;
   }) {
-    const response = await fetchWithAuth('/users/profile', {
-      method: 'PATCH',
-      body: JSON.stringify(data),
-    });
-    return handleResponse<any>(response);
+    return handleResponse<any>(
+      await fetchWithAuth('/users/profile', {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      }),
+    );
   },
-
   async followUser(userId: string) {
-    const response = await fetchWithAuth(`/users/follow/${userId}`, {
-      method: 'POST',
-    });
-    return handleResponse(response);
+    return handleResponse(
+      await fetchWithAuth(`/users/follow/${userId}`, { method: 'POST' }),
+    );
   },
-
   async unfollowUser(userId: string) {
-    const response = await fetchWithAuth(`/users/follow/${userId}`, {
-      method: 'DELETE',
-    });
-    return handleResponse(response);
+    return handleResponse(
+      await fetchWithAuth(`/users/follow/${userId}`, { method: 'DELETE' }),
+    );
   },
-
   async getFollowers(userId: string, page = 1, limit = 20) {
-    const response = await fetchWithAuth(
-      `/users/${userId}/followers?page=${page}&limit=${limit}`
+    return handleResponse<{ data: any[]; meta: any }>(
+      await fetchWithAuth(
+        `/users/${userId}/followers?page=${page}&limit=${limit}`,
+      ),
     );
-    return handleResponse<{ data: any[]; meta: any }>(response);
   },
-
   async getFollowing(userId: string, page = 1, limit = 20) {
-    const response = await fetchWithAuth(
-      `/users/${userId}/following?page=${page}&limit=${limit}`
+    return handleResponse<{ data: any[]; meta: any }>(
+      await fetchWithAuth(
+        `/users/${userId}/following?page=${page}&limit=${limit}`,
+      ),
     );
-    return handleResponse<{ data: any[]; meta: any }>(response);
   },
 };
 
-// Helper to check if user is authenticated
+// ─── Articles ───
+export interface Article {
+  id: string;
+  title: string;
+  slug: string;
+  content: string;
+  excerpt?: string;
+  coverImageUrl?: string;
+  tags?: string[];
+  status: 'draft' | 'published' | 'archived';
+  viewCount: number;
+  likeCount: number;
+  commentCount: number;
+  author: { id: string; username: string; fullName?: string; avatarUrl?: string };
+  createdAt: string;
+  updatedAt: string;
+  publishedAt?: string;
+  isBookmarked?: boolean;
+}
+
+export const articlesApi = {
+  async getAll(params?: {
+    page?: number;
+    limit?: number;
+    tag?: string;
+    authorId?: string;
+    status?: string;
+  }) {
+    const qs = new URLSearchParams();
+    if (params?.page) qs.set('page', String(params.page));
+    if (params?.limit) qs.set('limit', String(params.limit));
+    if (params?.tag) qs.set('tag', params.tag);
+    if (params?.authorId) qs.set('authorId', params.authorId);
+    if (params?.status) qs.set('status', params.status);
+    return handleResponse<{ data: Article[]; meta: any }>(
+      await fetchWithAuth(`/articles?${qs.toString()}`),
+    );
+  },
+
+  async getBySlug(slug: string) {
+    return handleResponse<Article>(
+      await fetchWithAuth(`/articles/${slug}`),
+    );
+  },
+
+  async create(data: {
+    title: string;
+    content: string;
+    excerpt?: string;
+    coverImageUrl?: string;
+    tags?: string[];
+    status?: 'draft' | 'published';
+  }) {
+    return handleResponse<Article>(
+      await fetchWithAuth('/articles', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    );
+  },
+
+  async update(
+    slug: string,
+    data: {
+      title?: string;
+      content?: string;
+      excerpt?: string;
+      coverImageUrl?: string;
+      tags?: string[];
+      status?: 'draft' | 'published' | 'archived';
+    },
+  ) {
+    return handleResponse<Article>(
+      await fetchWithAuth(`/articles/${slug}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      }),
+    );
+  },
+
+  async delete(slug: string) {
+    return handleResponse(
+      await fetchWithAuth(`/articles/${slug}`, { method: 'DELETE' }),
+    );
+  },
+
+  async getByAuthor(username: string, page = 1, limit = 10) {
+    return handleResponse<{ data: Article[]; meta: any }>(
+      await fetchWithAuth(
+        `/articles?author=${username}&page=${page}&limit=${limit}`,
+      ),
+    );
+  },
+};
+
+// ─── Bookmarks ───
+export const bookmarksApi = {
+  async getAll(page = 1, limit = 10) {
+    return handleResponse<{ data: Article[]; meta: any }>(
+      await fetchWithAuth(`/bookmarks?page=${page}&limit=${limit}`),
+    );
+  },
+  async add(articleId: string) {
+    return handleResponse(
+      await fetchWithAuth(`/bookmarks/${articleId}`, { method: 'POST' }),
+    );
+  },
+  async remove(articleId: string) {
+    return handleResponse(
+      await fetchWithAuth(`/bookmarks/${articleId}`, { method: 'DELETE' }),
+    );
+  },
+};
+
+// ─── Media ───
+export const mediaApi = {
+  async uploadCover(file: File) {
+    const form = new FormData();
+    form.append('file', file);
+    return handleResponse<{ url: string; key: string }>(
+      await fetchWithAuth('/media/upload/cover', {
+        method: 'POST',
+        body: form,
+      }),
+    );
+  },
+  async uploadContent(file: File) {
+    const form = new FormData();
+    form.append('file', file);
+    return handleResponse<{ url: string; key: string }>(
+      await fetchWithAuth('/media/upload/content', {
+        method: 'POST',
+        body: form,
+      }),
+    );
+  },
+};
+
+// ─── Helpers ───
 export function isAuthenticated(): boolean {
+  if (typeof window === 'undefined') return false;
   return !!localStorage.getItem('accessToken');
 }
 
-// Helper to get current user from token
 export function getCurrentUser(): any | null {
+  if (typeof window === 'undefined') return null;
   const token = localStorage.getItem('accessToken');
   if (!token) return null;
-
   try {
-    const payload = JSON.parse(atob(token.split('.')[1]));
-    return payload;
+    return JSON.parse(atob(token.split('.')[1]));
   } catch {
     return null;
   }
