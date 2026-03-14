@@ -9,6 +9,7 @@ import { AppService } from './app.service';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
 import { FeedModule } from './modules/feed/feed.module';
+import { CommentsModule } from './modules/comments/comments.module';
 
 @Module({
   imports: [
@@ -54,6 +55,7 @@ import { FeedModule } from './modules/feed/feed.module';
     AuthModule,
     UsersModule,
     FeedModule,
+    CommentsModule,
   ],
   controllers: [AppController],
   providers: [

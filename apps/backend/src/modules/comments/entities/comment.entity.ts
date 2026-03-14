@@ -5,7 +5,6 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   ManyToOne,
-  OneToMany,
   JoinColumn,
   Index,
   Tree,
@@ -15,10 +14,18 @@ import {
 import { User } from '../../users/entities/user.entity';
 import { Post } from '../../posts/entities/post.entity';
 
+export enum CommentStatus {
+  PENDING = 'pending',
+  APPROVED = 'approved',
+  HIDDEN = 'hidden',
+  DELETED = 'deleted',
+}
+
 @Entity('comments')
 @Tree('closure-table')
 @Index(['postId', 'createdAt'])
 @Index(['userId'])
+@Index(['status'])
 export class Comment {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -38,7 +45,7 @@ export class Comment {
   @Column({ type: 'uuid' })
   userId: string;
 
-  @ManyToOne(() => User, (user) => user.comments, {
+  @ManyToOne(() => User, {
     onDelete: 'CASCADE',
   })
   @JoinColumn({ name: 'userId' })
@@ -53,14 +60,18 @@ export class Comment {
   @TreeChildren()
   replies: Comment[];
 
+  @Column({
+    type: 'enum',
+    enum: CommentStatus,
+    default: CommentStatus.APPROVED,
+  })
+  status: CommentStatus;
+
   @Column({ default: 0 })
   likeCount: number;
 
   @Column({ default: false })
   isEdited: boolean;
-
-  @Column({ default: false })
-  isDeleted: boolean;
 
   @CreateDateColumn()
   createdAt: Date;
@@ -68,9 +79,15 @@ export class Comment {
   @UpdateDateColumn()
   updatedAt: Date;
 
-  // Virtual fields
-  userDetails?: Partial<User>;
+  // Virtual fields (not stored in DB)
+  userDetails?: {
+    id: string;
+    username: string;
+    fullName: string | null;
+    avatarUrl: string | null;
+  };
   repliesCount?: number;
-  canEdit?: boolean; // Current user can edit this comment
-  canDelete?: boolean; // Current user can delete this comment
+  depth?: number;
+  canEdit?: boolean;
+  canDelete?: boolean;
 }
