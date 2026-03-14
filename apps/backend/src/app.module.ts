@@ -10,6 +10,8 @@ import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
 import { FeedModule } from './modules/feed/feed.module';
 import { CommentsModule } from './modules/comments/comments.module';
+import { ClapsModule } from './modules/claps/claps.module';
+import { BookmarksModule } from './modules/bookmarks/bookmarks.module';
 
 @Module({
   imports: [
@@ -56,6 +58,8 @@ import { CommentsModule } from './modules/comments/comments.module';
     UsersModule,
     FeedModule,
     CommentsModule,
+    ClapsModule,
+    BookmarksModule,
   ],
   controllers: [AppController],
   providers: [
