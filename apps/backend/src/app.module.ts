@@ -8,6 +8,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
+import { ArticlesModule } from './modules/posts/articles.module';
 import { FeedModule } from './modules/feed/feed.module';
 import { CommentsModule } from './modules/comments/comments.module';
 import { ClapsModule } from './modules/claps/claps.module';
@@ -57,6 +58,7 @@ import { StatsModule } from './modules/stats/stats.module';
     ]),
     AuthModule,
     UsersModule,
+    ArticlesModule,
     FeedModule,
     CommentsModule,
     ClapsModule,
