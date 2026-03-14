@@ -58,6 +58,7 @@ async function fetchWithAuth(
       } catch {
         localStorage.removeItem('accessToken');
         localStorage.removeItem('refreshToken');
+        localStorage.removeItem('user');
         window.location.href = '/login';
       }
     }
@@ -182,19 +183,29 @@ export interface Article {
   slug: string;
   content: string;
   excerpt?: string;
+  subtitle?: string;
   coverImageUrl?: string;
   tags?: string[];
   status: 'draft' | 'published' | 'archived';
   viewCount: number;
   likeCount: number;
   commentCount: number;
-  author: { id: string; username: string; fullName?: string; avatarUrl?: string };
+  readingTimeMinutes?: number;
+  author: {
+    id: string;
+    username: string;
+    fullName?: string;
+    avatarUrl?: string;
+    bio?: string;
+  };
   createdAt: string;
   updatedAt: string;
   publishedAt?: string;
   isBookmarked?: boolean;
 }
 
+// NOTE: Articles module not implemented in backend yet
+// These endpoints are placeholders for future implementation
 export const articlesApi = {
   async getAll(params?: {
     page?: number;
@@ -215,15 +226,14 @@ export const articlesApi = {
   },
 
   async getBySlug(slug: string) {
-    return handleResponse<Article>(
-      await fetchWithAuth(`/articles/${slug}`),
-    );
+    return handleResponse<Article>(await fetchWithAuth(`/articles/${slug}`));
   },
 
   async create(data: {
     title: string;
     content: string;
     excerpt?: string;
+    subtitle?: string;
     coverImageUrl?: string;
     tags?: string[];
     status?: 'draft' | 'published';
@@ -242,6 +252,7 @@ export const articlesApi = {
       title?: string;
       content?: string;
       excerpt?: string;
+      subtitle?: string;
       coverImageUrl?: string;
       tags?: string[];
       status?: 'draft' | 'published' | 'archived';
@@ -261,6 +272,17 @@ export const articlesApi = {
     );
   },
 
+  async search(query: string, page = 1, limit = 20) {
+    const qs = new URLSearchParams({
+      q: query,
+      page: String(page),
+      limit: String(limit),
+    });
+    return handleResponse<{ data: Article[]; meta: any }>(
+      await fetchWithAuth(`/articles/search?${qs.toString()}`),
+    );
+  },
+
   async getByAuthor(username: string, page = 1, limit = 10) {
     return handleResponse<{ data: Article[]; meta: any }>(
       await fetchWithAuth(
@@ -270,16 +292,70 @@ export const articlesApi = {
   },
 };
 
+// ─── Feed ───
+export const feedApi = {
+  /**
+   * Get personalized feed from followed authors
+   * Requires authentication
+   */
+  async getPersonalized(params?: {
+    page?: number;
+    limit?: number;
+    tag?: string;
+    dateFrom?: string;
+    dateTo?: string;
+  }) {
+    const qs = new URLSearchParams();
+    if (params?.page) qs.set('page', String(params.page));
+    if (params?.limit) qs.set('limit', String(params.limit));
+    if (params?.tag) qs.set('tag', params.tag);
+    if (params?.dateFrom) qs.set('dateFrom', params.dateFrom);
+    if (params?.dateTo) qs.set('dateTo', params.dateTo);
+    return handleResponse<{ data: Article[]; meta: any }>(
+      await fetchWithAuth(`/feed/personalized?${qs.toString()}`),
+    );
+  },
+
+  /**
+   * Get explore feed (global, all published articles)
+   * Public endpoint
+   */
+  async getExplore(params?: {
+    page?: number;
+    limit?: number;
+    sortBy?: 'recent' | 'popular' | 'trending';
+    tag?: string;
+    dateFrom?: string;
+    dateTo?: string;
+  }) {
+    const qs = new URLSearchParams();
+    if (params?.page) qs.set('page', String(params.page));
+    if (params?.limit) qs.set('limit', String(params.limit));
+    if (params?.sortBy) qs.set('sortBy', params.sortBy);
+    if (params?.tag) qs.set('tag', params.tag);
+    if (params?.dateFrom) qs.set('dateFrom', params.dateFrom);
+    if (params?.dateTo) qs.set('dateTo', params.dateTo);
+    const url = `/feed/explore?${qs.toString()}`;
+    // Public endpoint, but still use fetchWithAuth to include token if available
+    return handleResponse<{ data: Article[]; meta: any }>(
+      await fetchWithAuth(url),
+    );
+  },
+};
+
 // ─── Bookmarks ───
 export const bookmarksApi = {
-  async getAll(page = 1, limit = 10) {
+  async getAll(page = 1, limit = 20) {
     return handleResponse<{ data: Article[]; meta: any }>(
       await fetchWithAuth(`/bookmarks?page=${page}&limit=${limit}`),
     );
   },
-  async add(articleId: string) {
+  async add(postId: string) {
     return handleResponse(
-      await fetchWithAuth(`/bookmarks/${articleId}`, { method: 'POST' }),
+      await fetchWithAuth('/bookmarks', {
+        method: 'POST',
+        body: JSON.stringify({ postId }),
+      }),
     );
   },
   async remove(articleId: string) {
@@ -287,17 +363,39 @@ export const bookmarksApi = {
       await fetchWithAuth(`/bookmarks/${articleId}`, { method: 'DELETE' }),
     );
   },
+  async isBookmarked(articleId: string) {
+    try {
+      const response = await fetchWithAuth(`/bookmarks/check/${articleId}`);
+      const data = await handleResponse<{ isBookmarked: boolean }>(response);
+      return data.isBookmarked;
+    } catch {
+      return false;
+    }
+  },
 };
 
 // ─── Claps ───
 export const clapsApi = {
-  async clap(articleId: string, count = 1) {
-    return handleResponse<{ totalClaps: number }>(
-      await fetchWithAuth(`/articles/${articleId}/clap`, {
+  async add(articleId: string, count = 1) {
+    return handleResponse<{
+      userClaps: number;
+      totalClaps: number;
+      added: number;
+      message: string;
+    }>(
+      await fetchWithAuth(`/claps/articles/${articleId}`, {
         method: 'POST',
         body: JSON.stringify({ count }),
       }),
     );
+  },
+  async getCount(articleId: string) {
+    return handleResponse<{
+      totalClaps: number;
+      userClaps: number;
+      maxClaps: number;
+      canClap: boolean;
+    }>(await fetchWithAuth(`/claps/articles/${articleId}`));
   },
 };
 
@@ -305,30 +403,59 @@ export const clapsApi = {
 export interface Comment {
   id: string;
   content: string;
-  author: { id: string; username: string; fullName?: string; avatarUrl?: string };
-  articleId: string;
-  parentId?: string;
+  status: string;
+  likeCount: number;
+  isEdited: boolean;
   createdAt: string;
   updatedAt: string;
+  user: {
+    id: string;
+    username: string;
+    fullName?: string;
+    avatarUrl?: string;
+  };
+  canEdit: boolean;
+  canDelete: boolean;
   replies?: Comment[];
 }
 
 export const commentsApi = {
-  async getByArticle(articleId: string, page = 1, limit = 50) {
-    return handleResponse<{ data: Comment[]; meta: any }>(
-      await fetchWithAuth(
-        `/articles/${articleId}/comments?page=${page}&limit=${limit}`,
-      ),
+  /**
+   * Get comments for an article (nested tree structure)
+   */
+  async getByArticle(articleId: string) {
+    return handleResponse<{ comments: Comment[]; total: number }>(
+      await fetchWithAuth(`/comments/articles/${articleId}`),
     );
   },
-  async create(articleId: string, content: string, parentId?: string) {
+
+  /**
+   * Create a top-level comment on an article
+   */
+  async create(articleId: string, content: string) {
     return handleResponse<Comment>(
-      await fetchWithAuth(`/articles/${articleId}/comments`, {
+      await fetchWithAuth(`/comments/articles/${articleId}`, {
         method: 'POST',
-        body: JSON.stringify({ content, parentId }),
+        body: JSON.stringify({ content }),
       }),
     );
   },
+
+  /**
+   * Reply to an existing comment
+   */
+  async reply(commentId: string, content: string) {
+    return handleResponse<Comment>(
+      await fetchWithAuth(`/comments/${commentId}/reply`, {
+        method: 'POST',
+        body: JSON.stringify({ content }),
+      }),
+    );
+  },
+
+  /**
+   * Update a comment
+   */
   async update(commentId: string, content: string) {
     return handleResponse<Comment>(
       await fetchWithAuth(`/comments/${commentId}`, {
@@ -337,6 +464,10 @@ export const commentsApi = {
       }),
     );
   },
+
+  /**
+   * Delete a comment (soft delete)
+   */
   async delete(commentId: string) {
     return handleResponse(
       await fetchWithAuth(`/comments/${commentId}`, { method: 'DELETE' }),
@@ -344,8 +475,58 @@ export const commentsApi = {
   },
 };
 
+// ─── Tags ───
+// NOTE: Tags module not implemented in backend yet
+export const tagsApi = {
+  async getTrending(limit = 10) {
+    return handleResponse<{ data: any[] }>(
+      await fetchWithAuth(`/tags/trending?limit=${limit}`),
+    );
+  },
+  async getAll(params?: { page?: number; limit?: number; search?: string }) {
+    const qs = new URLSearchParams();
+    if (params?.page) qs.set('page', String(params.page));
+    if (params?.limit) qs.set('limit', String(params.limit));
+    if (params?.search) qs.set('search', params.search);
+    return handleResponse<{ data: any[]; meta: any }>(
+      await fetchWithAuth(`/tags?${qs.toString()}`),
+    );
+  },
+};
+
+// ─── Stats ───
+// NOTE: Stats module not implemented in backend yet
+export const statsApi = {
+  async getOverview() {
+    return handleResponse<{
+      totalUsers: number;
+      totalArticles: number;
+      totalComments: number;
+      totalViews: number;
+    }>(await fetchWithAuth('/stats/overview'));
+  },
+  async getGrowth(period: 'week' | 'month' | 'year' = 'month') {
+    return handleResponse<{
+      users: any[];
+      articles: any[];
+      comments: any[];
+      views: any[];
+    }>(await fetchWithAuth(`/stats/growth?period=${period}`));
+  },
+};
+
 // ─── Media ───
 export const mediaApi = {
+  async uploadAvatar(file: File) {
+    const form = new FormData();
+    form.append('file', file);
+    return handleResponse<{ url: string; key: string }>(
+      await fetchWithAuth('/media/upload/avatar', {
+        method: 'POST',
+        body: form,
+      }),
+    );
+  },
   async uploadCover(file: File) {
     const form = new FormData();
     form.append('file', file);
@@ -363,6 +544,13 @@ export const mediaApi = {
       await fetchWithAuth('/media/upload/content', {
         method: 'POST',
         body: form,
+      }),
+    );
+  },
+  async delete(fileKey: string) {
+    return handleResponse(
+      await fetchWithAuth(`/media/${encodeURIComponent(fileKey)}`, {
+        method: 'DELETE',
       }),
     );
   },
@@ -566,10 +754,23 @@ export function isAuthenticated(): boolean {
 
 export function getCurrentUser(): any | null {
   if (typeof window === 'undefined') return null;
+  const userStr = localStorage.getItem('user');
+  if (userStr) {
+    try {
+      return JSON.parse(userStr);
+    } catch {}
+  }
+  // Fallback: decode from token
   const token = localStorage.getItem('accessToken');
   if (!token) return null;
   try {
-    return JSON.parse(atob(token.split('.')[1]));
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    return {
+      id: payload.sub,
+      email: payload.email,
+      username: payload.username,
+      role: payload.role,
+    };
   } catch {
     return null;
   }
@@ -578,4 +779,13 @@ export function getCurrentUser(): any | null {
 export function isAdmin(): boolean {
   const user = getCurrentUser();
   return user?.role === 'ADMIN';
+}
+
+export function logout() {
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
+    localStorage.removeItem('user');
+    window.location.href = '/login';
+  }
 }
